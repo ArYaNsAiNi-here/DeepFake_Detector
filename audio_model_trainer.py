@@ -18,7 +18,7 @@ class AudioSpectrogramDataset(Dataset):
         self.sr = sr
         self.duration = duration
         self.max_len = sr * duration
-        valid_exts = ('.wav', '.mp3', '.flac')
+        valid_exts = ('.wav', '.mp3')
 
         for label, folder in enumerate(['real', 'fake']):
             full_path = os.path.join(root_dir, folder)
@@ -57,11 +57,10 @@ class DeepFakeCNN(nn.Module):
             nn.Conv2d(16, 32, 3, padding=1), nn.BatchNorm2d(32), nn.ReLU(), nn.MaxPool2d(2),
             nn.Conv2d(32, 64, 3, padding=1), nn.BatchNorm2d(64), nn.ReLU(), nn.MaxPool2d(2),
             nn.Conv2d(64, 128, 3, padding=1), nn.BatchNorm2d(128), nn.ReLU(), nn.MaxPool2d(2),
-            nn.Conv2d(128, 256, 3, padding=1), nn.BatchNorm2d(256), nn.ReLU(), nn.MaxPool2d(2),
-            nn.Conv2d(256, 512, 3, padding=1), nn.BatchNorm2d(512), nn.ReLU(),
+            nn.Conv2d(128, 256, 3, padding=1), nn.BatchNorm2d(256), nn.ReLU(),
             nn.AdaptiveAvgPool2d((4, 4)),
             nn.Flatten(),
-            nn.Linear(256 * 4 * 4, 256), nn.ReLU(), nn.Dropout(0.5),
+            nn.Linear(256 * 4 * 4, 256), nn.ReLU(), nn.Dropout(0.4),
             nn.Linear(256, 2)
         )
 
@@ -69,14 +68,16 @@ class DeepFakeCNN(nn.Module):
         return self.net(x)
 
 # Setup
-root_dir = 'D:\\Dev\\Code10Thrive\\audio_dataset'
-dataset = AudioSpectrogramDataset(root_dir)
-dataloader = DataLoader(dataset, batch_size=32, shuffle=True)
-
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print("Using device:", device)
 if device.type == 'cuda':
     print("GPU Name:", torch.cuda.get_device_name(0))
+
+root_dir = 'D:\\Dev\\Code10Thrive\\audio_dataset'
+dataset = AudioSpectrogramDataset(root_dir)
+dataloader = DataLoader(dataset, batch_size=32, shuffle=True)
+
+
 
 model = DeepFakeCNN().to(device)
 criterion = nn.CrossEntropyLoss()
@@ -105,7 +106,7 @@ for epoch in range(num_epochs):
     for inputs, labels in dataloader:
         inputs, labels = inputs.to(device), labels.to(device)
 
-        print(f"Batch device: {inputs.device}, Labels device: {labels.device}")
+        # print(f"Batch device: {inputs.device}, Labels device: {labels.device}")
 
         optimizer.zero_grad()
         outputs = model(inputs)
@@ -132,16 +133,30 @@ for epoch in range(num_epochs):
         print_gpu_usage()
 
 # Save model
-torch.save(model, "deepfake_audio_full_model.pth")
+torch.save(model.state_dict(), ".\\Models\\deepfake_audio_model1_stateDict.pth")
+torch.save(model, ".\\Models\\deepfake_audio_model1.pth")
 
 # Combined Plot
 plt.figure(figsize=(10,6))
-plt.plot(train_losses, label='Loss', marker='o')
-plt.plot(train_accuracies, label='Accuracy (%)', marker='x')
-plt.plot(epoch_times, label='Epoch Time (s)', marker='s')
+plt.ylabel(train_losses, label='Loss', marker='o')
 plt.xlabel('Epoch')
 plt.title('Training Metrics')
 plt.legend()
 plt.grid(True)
 plt.tight_layout()
 plt.show()
+
+plt.figure(figsize=(10,6))
+plt.ylabel(train_accuracies, label='Accuracy', marker='x')
+plt.xlabel('Epoch')
+plt.title('Training Metrics')
+plt.legend()
+plt.grid(True)
+plt.show()
+
+plt.figure(figsize=(10,6))
+plt.ylabel(epoch_duration, label='Loss', marker='o')
+plt.xlabel('Epoch')
+plt.title('Training Metrics')
+plt.legend()
+plt.grid(True)
