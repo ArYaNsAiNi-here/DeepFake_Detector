@@ -1,10 +1,34 @@
+import os
 import torch
 import torchaudio
 import torch.nn.functional as F
-import os
 from torch import nn
+from pydub import AudioSegment
 
-# === Define Model Architecture ===
+# === Step 1: Convert to WAV ===
+def convert_to_wav(input_path, output_path, target_sr=16000):
+    audio = AudioSegment.from_file(input_path)
+    audio = audio.set_channels(1)
+    audio = audio.set_frame_rate(target_sr)
+    audio.export(output_path, format="wav")
+    return output_path
+
+# === Step 2: Audio Preprocessing ===
+def preprocess_audio(file_path, sample_rate=16000, duration=3):
+    max_len = sample_rate * duration
+    waveform, sr = torchaudio.load(file_path)
+    waveform = waveform.mean(dim=0)
+
+    if waveform.shape[0] < max_len:
+        waveform = F.pad(waveform, (0, max_len - waveform.shape[0]))
+    else:
+        waveform = waveform[:max_len]
+
+    mel_spec = torchaudio.transforms.MelSpectrogram(sample_rate=sr, n_mels=64)(waveform)
+    log_mel = torchaudio.transforms.AmplitudeToDB()(mel_spec)
+    return log_mel.unsqueeze(0).unsqueeze(0)  # Shape: [1, 1, H, W]
+
+# === Step 3: Define Model ===
 class DeepFakeCNN(nn.Module):
     def __init__(self):
         super().__init__()
@@ -23,45 +47,51 @@ class DeepFakeCNN(nn.Module):
     def forward(self, x):
         return self.net(x)
 
-# === Load Model with Weights Only ===
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-model = DeepFakeCNN()
-model.load_state_dict(torch.load("D:\\Dev\\Code10Thrive\\DeepFake_Detector\\Models\\deepfake_audio_model_enhanced_1.pth", map_location=device))
-model.eval()
-model.to(device)
+# === Step 4: Load Trained Model ===
+def load_model(model_path, device):
+    model = DeepFakeCNN()
+    state_dict = torch.load(model_path, map_location=device)
 
-# === Preprocessing Function ===
-def preprocess_audio(file_path, sample_rate=16000, duration=3):
-    max_len = sample_rate * duration
+    # If trained with torch.save(model.state_dict())
+    if "net.0.weight" in state_dict:
+        model.load_state_dict(state_dict)
+    else:  # If keys have no 'net.' prefix
+        from collections import OrderedDict
+        new_state_dict = OrderedDict()
+        for k, v in state_dict.items():
+            new_state_dict["net." + k] = v
+        model.load_state_dict(new_state_dict)
 
-    waveform, sr = torchaudio.load(file_path)
-    waveform = waveform.mean(dim=0)  # Convert to mono
+    model.to(device)
+    model.eval()
+    return model
 
-    if waveform.shape[0] < max_len:
-        waveform = F.pad(waveform, (0, max_len - waveform.shape[0]))
-    else:
-        waveform = waveform[:max_len]
-
-    mel_spec = torchaudio.transforms.MelSpectrogram(sample_rate=sr, n_mels=64)(waveform)
-    log_mel = torchaudio.transforms.AmplitudeToDB()(mel_spec)
-    return log_mel.unsqueeze(0).unsqueeze(0)  # Shape: [1, 1, H, W]
-
-# === Prediction Function ===
-def predict(file_path):
-    input_tensor = preprocess_audio(file_path).to(device)
+# === Step 5: Prediction Function ===
+def predict_deepfake(audio_file, model, device):
+    input_tensor = preprocess_audio(audio_file).to(device)
     with torch.no_grad():
         output = model(input_tensor)
         probs = F.softmax(output, dim=1)
-        predicted = torch.argmax(probs, dim=1).item()
-        confidence = probs[0][predicted].item()
-    label = "Real" if predicted == 0 else "Fake"
-    return label, confidence
+        pred = torch.argmax(probs, dim=1).item()
+        confidence = probs[0][pred].item()
+    return "Real" if pred == 0 else "Fake", confidence
 
-# === Example Usage ===
+# === Step 6: Main Script ===
 if __name__ == "__main__":
-    test_file = "D:\\Dev\\Code10Thrive\\2\\for-original\\for-original\\testing\\fake\\file1.wav"  # Change this
-    if not os.path.exists(test_file):
-        print("Audio file not found! Please check the path.")
-    else:
-        label, conf = predict(test_file)
-        print(f"Prediction: {label} (Confidence: {conf:.2f})")
+    original_file = "D:\\Dev\\Code10Thrive\\2\\for-original\\for-original\\training\\real\\file12.wav"  # 🔁 CHANGE THIS
+    temp_wav = "temp_audio.wav"
+    model_path = "D:\\Dev\\Code10Thrive\\DeepFake_Detector\\Models\\deepfake_audio_model1_stateDict.pth"
+
+    if not os.path.exists(original_file):
+        print("File does not exist.")
+        exit()
+
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    convert_to_wav(original_file, temp_wav)
+    model = load_model(model_path, device)
+
+    label, conf = predict_deepfake(temp_wav, model, device)
+    print(f"\nPrediction: {label} (Accuracy : {conf*100:.2f}%)")
+
+    # Clean up temp file
+    os.remove(temp_wav)
