@@ -12,30 +12,33 @@ import time
 from torch.utils.data import Dataset, DataLoader
 
 class AudioSpectrogramDataset(Dataset):
-    def _init_(self, root_dir, sr=16000, duration=3):
+    def __init__(self, root_dir, sr=16000, duration=3):
         self.paths = []
         self.labels = []
         self.sr = sr
         self.duration = duration
         self.max_len = sr * duration
+        valid_exts = ('.wav', '.mp3', '.flac')
 
         for label, folder in enumerate(['real', 'fake']):
             full_path = os.path.join(root_dir, folder)
             for f in os.listdir(full_path):
-                if f.endswith('.wav'):
-                    self.paths.append(os.path.join(full_path, f))
-                    self.labels.append(label)
-                if f.endswith('.mp3'):
+                if any(ext in f.lower() for ext in valid_exts):
                     self.paths.append(os.path.join(full_path, f))
                     self.labels.append(label)
 
-    def _len_(self):
+    def __len__(self):
         return len(self.paths)
 
-    def _getitem_(self, idx):
+    def __getitem__(self, idx):
         path = self.paths[idx]
         label = self.labels[idx]
-        waveform, sr = torchaudio.load(path)
+        try:
+            waveform, sr = torchaudio.load(path)
+        except Exception as e:
+            print(f"Error loading {path}: {e}")
+            return self.__getitem__((idx + 1) % len(self))
+
         waveform = waveform.mean(dim=0)
         if waveform.shape[0] < self.max_len:
             waveform = torch.nn.functional.pad(waveform, (0, self.max_len - waveform.shape[0]))
@@ -47,8 +50,8 @@ class AudioSpectrogramDataset(Dataset):
         return log_mel.unsqueeze(0), label
 
 class DeepFakeCNN(nn.Module):
-    def _init_(self):
-        super()._init_()
+    def __init__(self):
+        super().__init__()
         self.net = nn.Sequential(
             nn.Conv2d(1, 16, 3, padding=1), nn.BatchNorm2d(16), nn.ReLU(), nn.MaxPool2d(2),
             nn.Conv2d(16, 32, 3, padding=1), nn.BatchNorm2d(32), nn.ReLU(), nn.MaxPool2d(2),
@@ -59,14 +62,14 @@ class DeepFakeCNN(nn.Module):
             nn.AdaptiveAvgPool2d((4, 4)),
             nn.Flatten(),
             nn.Linear(256 * 4 * 4, 256), nn.ReLU(), nn.Dropout(0.5),
-            nn.Linear(512, 2)
+            nn.Linear(256, 2)
         )
 
     def forward(self, x):
         return self.net(x)
 
 # Setup
-root_dir = 'D:\\Dev\\Code10Thrive\\audio_dataset' #Path to the Dataset
+root_dir = 'D:\\Dev\\Code10Thrive\\audio_dataset'
 dataset = AudioSpectrogramDataset(root_dir)
 dataloader = DataLoader(dataset, batch_size=32, shuffle=True)
 
