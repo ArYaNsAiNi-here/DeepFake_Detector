@@ -25,6 +25,9 @@ class AudioSpectrogramDataset(Dataset):
                 if f.endswith('.wav'):
                     self.paths.append(os.path.join(full_path, f))
                     self.labels.append(label)
+                if f.endswith('.mp3'):
+                    self.paths.append(os.path.join(full_path, f))
+                    self.labels.append(label)
 
     def _len_(self):
         return len(self.paths)
@@ -63,7 +66,7 @@ class DeepFakeCNN(nn.Module):
         return self.net(x)
 
 # Setup
-root_dir = './audio_dataset'
+root_dir = 'D:\\Dev\\Code10Thrive\\audio_dataset' #Path to the Dataset
 dataset = AudioSpectrogramDataset(root_dir)
 dataloader = DataLoader(dataset, batch_size=32, shuffle=True)
 
@@ -79,7 +82,7 @@ optimizer = optim.Adam(model.parameters(), lr=0.001)
 assert next(model.parameters()).is_cuda, "Model is NOT on GPU!"
 
 # Training with stats, GPU monitoring, timing, and debug printing
-num_epochs = 10
+num_epochs = 20
 train_losses = []
 train_accuracies = []
 epoch_times = []
