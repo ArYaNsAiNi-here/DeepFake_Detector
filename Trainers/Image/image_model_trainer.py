@@ -4,9 +4,10 @@ import time
 import torch
 import numpy as np
 import matplotlib.pyplot as plt
-from PIL import Image
+from PIL import Image, UnidentifiedImageError
 from torch import nn
-from torchvision import models, transforms
+from torchvision import transforms
+from torchvision.models import resnet50, ResNet50_Weights
 from torch.utils.data import Dataset, DataLoader
 
 # ========== Device Setup ==========
@@ -43,7 +44,7 @@ def align_face(img):
         dy = eye_center2[1] - eye_center1[1]
         angle = np.degrees(np.arctan2(dy, dx))
 
-        M = cv2.getRotationMatrix2D((w // 2, h // 2), angle, 1)
+        M = cv2.getRotationMatrix2D((int(w // 2), int(h // 2)), angle, 1)
         aligned = cv2.warpAffine(face, M, (w, h))
         return aligned
     return face
@@ -64,14 +65,21 @@ class AlignedFaceDataset(Dataset):
     def __getitem__(self, idx):
         img_path = self.paths[idx]
         label = self.labels[idx]
-        img = cv2.imread(img_path)
-        aligned = align_face(img)
-        if aligned is None:
-            aligned = img  # fallback
-        img_pil = Image.fromarray(cv2.cvtColor(aligned, cv2.COLOR_BGR2RGB))
-        if self.transform:
-            img_pil = self.transform(img_pil)
-        return img_pil, label
+        try:
+            img = cv2.imread(img_path)
+            if img is None:
+                print(f"⚠️ Unreadable image (None): {img_path}")
+                raise ValueError("Unreadable image")
+            aligned = align_face(img)
+            if aligned is None:
+                aligned = img  # fallback
+            img_pil = Image.fromarray(cv2.cvtColor(aligned, cv2.COLOR_BGR2RGB))
+            if self.transform:
+                img_pil = self.transform(img_pil)
+            return img_pil, label
+        except Exception as e:
+            print(f"❌ Error loading image {img_path}: {e}")
+            return self.__getitem__((idx + 1) % len(self))
 
     def __len__(self):
         return len(self.paths)
@@ -89,7 +97,7 @@ dataset = AlignedFaceDataset(dataset_path, transform=transform)
 loader = DataLoader(dataset, batch_size=32, shuffle=True)
 
 # ========== Model ==========
-model = models.resnet18(pretrained=True)
+model = resnet50(weights=ResNet50_Weights.DEFAULT)
 model.fc = nn.Linear(model.fc.in_features, 2)
 model.to(device)
 
