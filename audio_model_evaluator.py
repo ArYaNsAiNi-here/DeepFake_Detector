@@ -5,7 +5,7 @@ import torch.nn.functional as F
 from torch import nn
 from pydub import AudioSegment
 
-# === Step 1: Convert to WAV ===
+# WAV Conversion
 def convert_to_wav(input_path, output_path, target_sr=16000):
     audio = AudioSegment.from_file(input_path)
     audio = audio.set_channels(1)
@@ -13,7 +13,7 @@ def convert_to_wav(input_path, output_path, target_sr=16000):
     audio.export(output_path, format="wav")
     return output_path
 
-# === Step 2: Audio Preprocessing ===
+#Audio Preprocess
 def preprocess_audio(file_path, sample_rate=16000, duration=3):
     max_len = sample_rate * duration
     waveform, sr = torchaudio.load(file_path)
@@ -28,7 +28,7 @@ def preprocess_audio(file_path, sample_rate=16000, duration=3):
     log_mel = torchaudio.transforms.AmplitudeToDB()(mel_spec)
     return log_mel.unsqueeze(0).unsqueeze(0)  # Shape: [1, 1, H, W]
 
-# === Step 3: Define Model ===
+#Define Model
 class DeepFakeCNN(nn.Module):
     def __init__(self):
         super().__init__()
@@ -47,7 +47,7 @@ class DeepFakeCNN(nn.Module):
     def forward(self, x):
         return self.net(x)
 
-# === Step 4: Load Trained Model ===
+#Loading Trained Model
 def load_model(model_path, device):
     model = DeepFakeCNN()
     state_dict = torch.load(model_path, map_location=device)
@@ -66,7 +66,7 @@ def load_model(model_path, device):
     model.eval()
     return model
 
-# === Step 5: Prediction Function ===
+#Prediction Function
 def predict_deepfake(audio_file, model, device):
     input_tensor = preprocess_audio(audio_file).to(device)
     with torch.no_grad():
@@ -76,7 +76,7 @@ def predict_deepfake(audio_file, model, device):
         confidence = probs[0][pred].item()
     return "Real" if pred == 0 else "Fake", confidence
 
-# === Step 6: Main Script ===
+#Main Script
 if __name__ == "__main__":
     original_file = "D:\\Dev\\Code10Thrive\\2\\for-original\\for-original\\training\\real\\file12.wav"  # 🔁 CHANGE THIS
     temp_wav = "temp_audio.wav"
@@ -93,5 +93,4 @@ if __name__ == "__main__":
     label, conf = predict_deepfake(temp_wav, model, device)
     print(f"\nPrediction: {label} (Accuracy : {conf*100:.2f}%)")
 
-    # Clean up temp file
     os.remove(temp_wav)
