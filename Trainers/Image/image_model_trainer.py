@@ -96,7 +96,7 @@ model.to(device)
 # ========== Training Setup ==========
 criterion = nn.CrossEntropyLoss()
 optimizer = torch.optim.Adam(model.parameters(), lr=0.0003)
-epochs = 10
+epochs = 20
 
 losses, accuracies, times = [], [], []
 

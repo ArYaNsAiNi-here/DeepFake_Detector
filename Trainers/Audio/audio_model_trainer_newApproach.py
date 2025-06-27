@@ -1,5 +1,3 @@
-# Deepfake Audio Detection with CNN, GPU Monitoring, and Training Plots (Function-Based)
-
 import os
 import torch
 import torchaudio
