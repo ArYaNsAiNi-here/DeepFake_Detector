@@ -25,9 +25,10 @@ DeepFake_Detector is a project developed by Team Code10Thrive. This Python-based
    ```bash
    pip install -r requirements.txt
 
-##Contributing
+## Contributing
 
 -TO BE ADDED-
 
-##Acknowledgements
+## Acknowledgements
+
 Developed by **Team Code10Thrive**
