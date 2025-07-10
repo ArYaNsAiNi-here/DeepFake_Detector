@@ -14,6 +14,8 @@ matplotlib==3.8.4
 
 # Torch utilities
 tqdm==4.66.4
+pytorch==2.1.0
+#pip install --pre torch torchvision torchaudio --index-url https://download.pytorch.org/whl/nightly/cu128 - ONLY FOR RTX50SERIES OR CUDA12.x
 
 # Audio processing
 torchaudio  # handled when you build PyTorch from source with audio
