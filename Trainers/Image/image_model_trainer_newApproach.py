@@ -94,7 +94,7 @@ transform = transforms.Compose([
 ])
 
 # ========== Load Data ==========
-dataset_path = "D:\\Projects\\Datasets\\Dataset\\Train"
+dataset_path = "D:\Projects\PythonProject\Dataset"
 dataset = AlignedFaceDataset(dataset_path, transform=transform)
 
 # ========== Training Setup ==========
@@ -109,7 +109,7 @@ model = model.to(device)
 
 criterion = nn.CrossEntropyLoss()
 optimizer = torch.optim.Adam(model.parameters(), lr=0.0003)
-epochs = 5
+epochs = 10
 
 losses, accuracies, times = [], [], []
 
