@@ -12,7 +12,7 @@ from tqdm import tqdm
 
 # ========== Device Setup ==========
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-print(f"✅ Using Device: {device}")
+print(f"Using Device: {device}")
 if device.type == "cuda":
     print(f"GPU Name: {torch.cuda.get_device_name(0)}")
 
@@ -80,7 +80,7 @@ class AlignedFaceDataset(Dataset):
                 img_pil = self.transform(img_pil)
             return img_pil, label
         except Exception as e:
-            print(f"❌ Skipping: {img_path} — {e}")
+            print(f"Skipping: {img_path} — {e}")
             return self.__getitem__((idx + 1) % len(self))
 
     def __len__(self):
@@ -94,7 +94,7 @@ transform = transforms.Compose([
 ])
 
 # ========== Load Data ==========
-dataset_path = "D:\\Dev\\Code10Thrive\\image_dataset"
+dataset_path = "D:\\Projects\\Datasets\\Dataset\\Train"
 dataset = AlignedFaceDataset(dataset_path, transform=transform)
 
 # ========== Training Setup ==========
@@ -148,13 +148,13 @@ for epoch in range(epochs):
     accuracies.append(acc)
     times.append(duration)
 
-    print(f"📊 Epoch {epoch+1}/{epochs} | Loss: {epoch_loss:.4f} | Accuracy: {acc:.2f}% | Time: {duration:.2f}s")
+    print(f"Epoch {epoch+1}/{epochs} | Loss: {epoch_loss:.4f} | Accuracy: {acc:.2f}% | Time: {duration:.2f}s")
 
 # ========== Save Trained Model ==========
 os.makedirs("D:\\Dev\\Code10Thrive\\DeepFake_Detector\\Models\\Image", exist_ok=True)
 torch.save(model.state_dict(), "D:\\Dev\\Code10Thrive\\DeepFake_Detector\\Models\\Image\\deepfake_image_model1_stateDict.pth")
 torch.save(model, "D:\\Dev\\Code10Thrive\\DeepFake_Detector\\Models\\Image\\deepfake_image_model1.pth")
-print("✅ Model saved.")
+print("Model saved.")
 
 # ========== Plotting ==========
 plt.figure(figsize=(16, 4))
