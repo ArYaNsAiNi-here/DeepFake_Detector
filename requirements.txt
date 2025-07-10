@@ -1,14 +1,32 @@
-numpy
-pandas
-matplotlib
-scikit-learn
-torch
-torchaudio
-torchvision
-opencv-python
-Pillow
-librosa
-soundfile
-GPUtil
-tqdm
-typing-extensions
+# Core Python version: 3.10
+# CUDA version: 12.8 (PyTorch built from source)
+# Deep Learning: PyTorch, TorchVision, TorchAudio (source build) - To support RTX50 Series
+# Use this file to install ALL non-PyTorch packages
+
+# Data handling
+numpy==1.26.4
+pandas==2.2.2
+
+# Computer Vision
+opencv-python==4.12.0.88
+Pillow==10.3.0
+matplotlib==3.8.4
+
+# Torch utilities
+tqdm==4.66.4
+
+# Audio processing
+torchaudio  # handled when you build PyTorch from source with audio
+
+# For Jupyter if needed
+jupyterlab==4.2.1
+
+# Others
+scikit-learn==1.5.0
+scipy==1.13.0
+
+# Optional: environment helpers
+virtualenv==20.26.1
+
+# Windows build tools helper
+pywin32==306

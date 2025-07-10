@@ -1,3 +1,4 @@
 import torch
-print("CUDA available:", torch.cuda.is_available())
-print("GPU:", torch.cuda.get_device_name(0) if torch.cuda.is_available() else "No GPU")
+print(torch.cuda.is_available())  # Should be True
+print(torch.version.cuda)         # Should show 12.1 or 12.2
+print(torch.cuda.get_device_name(0))
