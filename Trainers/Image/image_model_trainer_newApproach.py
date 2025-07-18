@@ -10,17 +10,14 @@ from torchvision import models, transforms
 from torch.utils.data import Dataset, DataLoader
 from tqdm import tqdm
 
-# ========== Device Setup ==========
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(f"Using Device: {device}")
 if device.type == "cuda":
     print(f"GPU Name: {torch.cuda.get_device_name(0)}")
 
-# ========== Haar Cascades ==========
 face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
 eye_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_eye.xml')
 
-# ========== Face Alignment ==========
 def align_face(img):
     try:
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -52,7 +49,7 @@ def align_face(img):
     except Exception as e:
         return None
 
-# ========== Dataset ==========
+# Dataset
 class AlignedFaceDataset(Dataset):
     def __init__(self, root_dir, transform=None):
         self.paths = []
@@ -86,18 +83,18 @@ class AlignedFaceDataset(Dataset):
     def __len__(self):
         return len(self.paths)
 
-# ========== Transforms ==========
+# Transformers
 transform = transforms.Compose([
     transforms.Resize((224, 224)),
     transforms.ToTensor(),
     transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5])
 ])
 
-# ========== Load Data ==========
+# Laoding Data
 dataset_path = "D:\Projects\PythonProject\Dataset"
 dataset = AlignedFaceDataset(dataset_path, transform=transform)
 
-# ========== Training Setup ==========
+# Training Setup
 effective_batch_size = 64
 actual_batch_size = 32
 accumulation_steps = effective_batch_size // actual_batch_size
@@ -113,7 +110,7 @@ epochs = 10
 
 losses, accuracies, times = [], [], []
 
-# ========== Training Loop ==========
+# Loop
 for epoch in range(epochs):
     model.train()
     start = time.time()
@@ -150,13 +147,11 @@ for epoch in range(epochs):
 
     print(f"Epoch {epoch+1}/{epochs} | Loss: {epoch_loss:.4f} | Accuracy: {acc:.2f}% | Time: {duration:.2f}s")
 
-# ========== Save Trained Model ==========
 os.makedirs("D:\\Dev\\Code10Thrive\\DeepFake_Detector\\Models\\Image", exist_ok=True)
 torch.save(model.state_dict(), "D:\\Dev\\Code10Thrive\\DeepFake_Detector\\Models\\Image\\deepfake_image_model1_stateDict.pth")
 torch.save(model, "D:\\Dev\\Code10Thrive\\DeepFake_Detector\\Models\\Image\\deepfake_image_model1.pth")
 print("Model saved.")
 
-# ========== Plotting ==========
 plt.figure(figsize=(16, 4))
 
 plt.subplot(1, 3, 1)
