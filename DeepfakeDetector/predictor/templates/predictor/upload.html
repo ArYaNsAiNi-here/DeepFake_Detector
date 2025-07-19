@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>DeepFake Detector</title>
+</head>
+<body>
+    <h2>Upload an Image</h2>
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        {{ form }}
+        <button type="submit">Upload & Predict</button>
+    </form>
+</body>
+</html>
