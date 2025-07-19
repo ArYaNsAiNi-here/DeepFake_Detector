@@ -32,3 +32,6 @@ virtualenv==20.26.1
 
 # Windows build tools helper
 pywin32==306
+
+#Web
+django==5.2.4
