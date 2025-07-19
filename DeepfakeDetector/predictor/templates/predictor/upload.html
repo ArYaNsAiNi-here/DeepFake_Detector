@@ -4,11 +4,15 @@
     <title>DeepFake Detector</title>
 </head>
 <body>
-    <h2>Upload an Image</h2>
+    <h2>Upload Media File</h2>
     <form method="post" enctype="multipart/form-data">
         {% csrf_token %}
-        {{ form }}
-        <button type="submit">Upload & Predict</button>
+        {{ form.as_p }}
+        <button type="submit">Upload</button>
     </form>
+
+    {% if result %}
+        <h3>Result: {{ result }}</h3>
+    {% endif %}
 </body>
 </html>
