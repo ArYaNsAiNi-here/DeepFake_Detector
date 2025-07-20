@@ -25,6 +25,12 @@ DeepFake_Detector is a project developed by Team Code10Thrive. This Python-based
    ```bash
    pip install -r requirements.txt
 
+4. **Start Django Server**
+   ```bash
+   cd DeepfakeDetector
+   python manage.py migrate
+   python manage.py runserver
+   
 ## Contributing
 
 -TO BE ADDED-
