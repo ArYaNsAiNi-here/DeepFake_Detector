@@ -2,10 +2,43 @@
 <html>
 <head>
     <title>Prediction Result</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f0f2f5;
+            padding: 40px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        h2 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        img {
+            max-width: 400px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        p a {
+            text-decoration: none;
+            color: #007bff;
+            font-weight: bold;
+            transition: color 0.3s ease;
+        }
+
+        p a:hover {
+            color: #0056b3;
+        }
+    </style>
 </head>
 <body>
     <h2>Prediction: {{ label }}</h2>
-    <img src="{{ file_url }}" alt="Uploaded Image" style="max-width: 400px;">
+    <img src="{{ file_url }}" alt="Uploaded Image">
     <p><a href="/">Go Back</a></p>
 </body>
 </html>
