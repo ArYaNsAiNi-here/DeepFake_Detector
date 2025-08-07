@@ -33,7 +33,7 @@ DeepFake_Detector is a project developed by Team Code10Thrive. This Python-based
    
 ## Contributing
 
--TO BE ADDED-
+---TO BE ADDED---
 
 ## Acknowledgements
 
