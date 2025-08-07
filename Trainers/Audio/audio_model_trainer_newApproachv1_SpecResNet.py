@@ -267,15 +267,15 @@ def train_model():
     plt.legend();
     plt.grid(True)
     plt.subplot(1, 3, 2);
-    plt.plot(epochs_range, history['train_acc'], 'x-', label='Train Acc');
-    plt.plot(epochs_range, history['val_acc'], 'x-', label='Val Acc');
-    plt.title("Accuracy");
-    plt.legend();
+    plt.plot(epochs_range, history['train_acc'], 'x-', label='Train Acc')
+    plt.plot(epochs_range, history['val_acc'], 'x-', label='Val Acc')
+    plt.title("Accuracy")
+    plt.legend()
     plt.grid(True)
-    plt.subplot(1, 3, 3);
-    plt.plot(epochs_range, history['time'], 's-', label='Epoch Time');
-    plt.title("Time per Epoch");
-    plt.legend();
+    plt.subplot(1, 3, 3)
+    plt.plot(epochs_range, history['time'], 's-', label='Epoch Time')
+    plt.title("Time per Epoch")
+    plt.legend()
     plt.grid(True)
     plt.tight_layout()
     plt.show()
