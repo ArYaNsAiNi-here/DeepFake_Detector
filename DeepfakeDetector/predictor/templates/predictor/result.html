@@ -2,43 +2,142 @@
 <html>
 <head>
     <title>Prediction Result</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
     <style>
+        :root {
+            --primary-color: #3d5af1;
+            --background-color: #f4f7f6;
+            --card-background: #ffffff;
+            --text-color: #333;
+            --subtle-text: #888;
+            --border-color: #e0e0e0;
+            --success-color: #28a745;
+            --error-color: #dc3545;
+        }
+
         body {
-            font-family: Arial, sans-serif;
-            background: #f0f2f5;
+            font-family: 'Poppins', sans-serif;
+            background: var(--background-color);
+            background-image: linear-gradient(135deg, #e0c3fc 0%, #8ec5fc 100%);
             padding: 40px;
             display: flex;
-            flex-direction: column;
             align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
         }
 
-        h2 {
-            color: #333;
-            margin-bottom: 20px;
+        .container {
+            width: 100%;
+            max-width: 500px;
+            text-align: center;
         }
 
-        img {
-            max-width: 400px;
+        .result-card {
+            background: var(--card-background);
+            padding: 30px 40px;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .media-display {
+            margin-bottom: 25px;
             border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-            margin-bottom: 20px;
+            overflow: hidden;
+            background-color: #f0f2f5;
         }
 
-        p a {
+        .media-display img,
+        .media-display video {
+            max-width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        .media-display audio {
+            width: 100%;
+            margin-top: 20px;
+        }
+
+        .prediction-header {
+            font-size: 24px;
+            font-weight: 600;
+            margin: 0 0 15px 0;
+            padding: 12px 20px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+
+        /* Dynamic styles for the result */
+        .prediction-header.real {
+            background-color: #eaf6ec;
+            color: var(--success-color);
+        }
+        .prediction-header.fake {
+            background-color: #fbebee;
+            color: var(--error-color);
+        }
+
+        .confidence-details {
+            font-size: 14px;
+            color: var(--subtle-text);
+            margin-bottom: 25px;
+        }
+
+        .back-link {
+            display: inline-flex;
+            align-items: center;
             text-decoration: none;
-            color: #007bff;
-            font-weight: bold;
-            transition: color 0.3s ease;
+            color: var(--primary-color);
+            font-weight: 500;
+            padding: 10px 18px;
+            border-radius: 8px;
+            transition: background-color 0.3s, color 0.3s;
         }
 
-        p a:hover {
-            color: #0056b3;
+        .back-link:hover {
+            background-color: #e8eaf6;
+        }
+
+        .back-link svg {
+            width: 18px;
+            height: 18px;
+            margin-right: 8px;
         }
     </style>
 </head>
 <body>
-    <h2>Prediction: {{ label }}</h2>
-    <img src="{{ file_url }}" alt="Uploaded Image">
-    <p><a href="/">Go Back</a></p>
+    <div class="container">
+        <div class="result-card">
+
+            <div class="media-display">
+                {% if media_type == 'image' %}
+                    <img src="{{ file_url }}" alt="Uploaded Media">
+                {% elif media_type == 'video' %}
+                    <video src="{{ file_url }}" controls autoplay muted loop></video>
+                {% elif media_type == 'audio' %}
+                    <audio src="{{ file_url }}" controls autoplay></audio>
+                {% endif %}
+            </div>
+
+            <h2 class="prediction-header {{ result_class }}">
+                {{ label }}
+            </h2>
+
+            <p class="confidence-details">
+                Model Confidence: <strong>{{ confidence }}</strong>
+            </p>
+
+            <a href="/" class="back-link">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
+                </svg>
+                Analyze Another File
+            </a>
+        </div>
+    </div>
 </body>
 </html>
