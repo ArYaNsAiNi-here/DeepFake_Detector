@@ -1,252 +1,103 @@
+{% load static %}
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>DeepFake Detector</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --primary-color: #3d5af1;
-            --primary-hover: #304ffe;
-            --background-color: #f4f7f6;
-            --card-background: #ffffff;
-            --text-color: #333;
-            --subtle-text: #666;
-            --border-color: #e0e0e0;
-            --success-color: #28a745;
-            --error-color: #dc3545;
-        }
-
-        body {
-            font-family: 'Poppins', sans-serif;
-            background: var(--background-color);
-            background-image: linear-gradient(135deg, #e0c3fc 0%, #8ec5fc 100%);
-            padding: 40px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            margin: 0;
-            box-sizing: border-box;
-        }
-
-        .container {
-            width: 100%;
-            max-width: 450px;
-            text-align: center;
-        }
-
-        .upload-card {
-            background: var(--card-background);
-            padding: 30px 40px;
-            border-radius: 16px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-            margin-bottom: 30px;
-            transition: all 0.3s ease;
-        }
-
-        .card-header {
-            margin-bottom: 25px;
-        }
-
-        .card-header h2 {
-            font-size: 24px;
-            font-weight: 600;
-            color: var(--text-color);
-            margin: 0 0 5px 0;
-        }
-
-        .card-header p {
-            color: var(--subtle-text);
-            font-size: 14px;
-            margin: 0;
-        }
-
-        .file-input-wrapper {
-            position: relative;
-            margin-bottom: 20px;
-        }
-
-        input[type="file"] {
-            position: absolute;
-            width: 1px;
-            height: 1px;
-            padding: 0;
-            margin: -1px;
-            overflow: hidden;
-            clip: rect(0, 0, 0, 0);
-            border: 0;
-        }
-
-        .file-input-label {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-            border: 2px dashed var(--border-color);
-            border-radius: 8px;
-            cursor: pointer;
-            transition: border-color 0.3s, background-color 0.3s;
-            color: var(--subtle-text);
-        }
-
-        .file-input-label:hover {
-            border-color: var(--primary-color);
-            background-color: #f8f9fa;
-        }
-
-        .file-input-label .icon {
-            width: 24px;
-            height: 24px;
-            margin-right: 10px;
-        }
-
-        .submit-btn {
-            background-image: linear-gradient(45deg, var(--primary-color), var(--primary-hover));
-            color: #fff;
-            border: none;
-            padding: 12px 15px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 16px;
-            font-weight: 500;
-            width: 100%;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(61, 90, 241, 0.4);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            height: 48px;
-        }
-
-        .submit-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(61, 90, 241, 0.5);
-        }
-
-        .submit-btn .spinner {
-            display: none;
-            border: 3px solid rgba(255, 255, 255, 0.3);
-            border-radius: 50%;
-            border-top-color: #fff;
-            width: 20px;
-            height: 20px;
-            animation: spin 1s ease-in-out infinite;
-        }
-
-        .submit-btn.loading .spinner { display: block; }
-        .submit-btn.loading .btn-text { display: none; }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
-        .result-card {
-            padding: 20px;
-            border-radius: 12px;
-            text-align: left;
-            border-left: 5px solid;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
-            background-color: #f8f9fa; /* Default background */
-        }
-
-        .result-card h4 {
-            margin: 0 0 5px 0;
-            font-weight: 600;
-        }
-        .result-card p {
-            margin: 0;
-            font-size: 15px;
-        }
-        .confidence-score {
-            font-size: 13px;
-            margin-top: 10px;
-            opacity: 0.8;
-        }
-
-        .result-card.real {
-            background-color: #eaf6ec;
-            border-left-color: var(--success-color);
-            color: var(--success-color);
-        }
-        .result-card.fake {
-            background-color: #fbebee;
-            border-left-color: var(--error-color);
-            color: var(--error-color);
-        }
-        .result-card.error {
-            background-color: #fff3cd;
-            border-left-color: #ffc107;
-            color: #664d03;
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Deepfake Detection Platform</title>
+  <!-- Change 1: Use the Django static tag to load the CSS -->
+  <link rel="stylesheet" href="{% static 'predictor/style.css' %}" />
 </head>
 <body>
+  <div class="overlay">
     <div class="container">
-        <div class="upload-card">
-            <div class="card-header">
-                <h2>DeepFake Detector</h2>
-                <p>Upload media to check its authenticity.</p>
-            </div>
+      <header>
+        <h1>🎯 Deepfake Detection Platform</h1>
+        <p>Secure, AI-powered analysis for audio, image, and video files</p>
+      </header>
 
-            <form method="post" enctype="multipart/form-data" id="upload-form">
-                {% csrf_token %}
-                <div class="file-input-wrapper">
-                    <!-- Assuming your form field from forms.py is named 'file' or 'media_file' -->
-                    {{ form.file }}
-                    <label for="{{ form.file.id_for_label }}" class="file-input-label">
-                        <svg class="icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
-                        </svg>
-                        <span id="file-name">Choose a file...</span>
-                    </label>
-                </div>
+      <section class="intro">
+        <h2>🔍 Check Any File Instantly</h2>
+        <p>Upload your media below and detect synthetic manipulations using advanced backend verification.</p>
+      </section>
 
-                <button type="submit" class="submit-btn" id="submit-button">
-                    <span class="btn-text">Analyze</span>
-                    <div class="spinner"></div>
-                </button>
-            </form>
+      <form id="uploadForm" enctype="multipart/form-data">
+        <!-- Django's CSRF token is required for security -->
+        {% csrf_token %}
+        <label for="fileInput">📁 Upload Media File:</label>
+        <input type="file" id="fileInput" name="media" accept="audio/*,video/*,image/*" required />
+
+        <div class="button-group">
+          <button type="submit" class="btn large-btn">🚀 Detect</button>
+          <button type="button" class="btn large-btn" onclick="clearInputs()">🧹 Clear</button>
+          <button type="button" class="btn large-btn" onclick="showInfo()">📘 Info</button>
         </div>
+      </form>
 
-        {% if result %}
-            <div class="result-card {{ result.class }}">
-                <h4>Analysis Result</h4>
-                <p>{{ result.text }}</p>
+      <div id="result"></div>
 
-                {% if result.confidence %}
-                    <p class="confidence-score">Confidence: <strong>{{ result.confidence }}</strong></p>
-                {% endif %}
-            </div>
-        {% endif %}
+      <footer>
+        &copy; 2025 Deepfake Safety Initiative | Created by Code10thrive
+      </footer>
     </div>
+  </div>
 
-    <script>
-        const fileInput = document.getElementById("{{ form.file.id_for_label }}");
-        const fileNameSpan = document.getElementById('file-name');
-        if (fileInput) {
-            fileInput.addEventListener('change', (e) => {
-                if (e.target.files.length > 0) {
-                    fileNameSpan.textContent = e.target.files[0].name;
-                } else {
-                    fileNameSpan.textContent = 'Choose a file...';
-                }
-            });
-        }
+  <script>
+    function clearInputs() {
+      document.getElementById('fileInput').value = '';
+      const resultDiv = document.getElementById('result');
+      resultDiv.innerHTML = '';
+      resultDiv.className = ''; // Clear result styling
+    }
 
-        const uploadForm = document.getElementById('upload-form');
-        const submitButton = document.getElementById('submit-button');
-        if (uploadForm) {
-            uploadForm.addEventListener('submit', () => {
-                // Ensure a file has been selected before showing the spinner
-                if (fileInput && fileInput.files.length > 0) {
-                    submitButton.classList.add('loading');
-                    submitButton.disabled = true;
-                }
-            });
-        }
-    </script>
+    function showInfo() {
+      alert('This platform uses AI to detect deepfake content in audio, images, and video files with high precision.');
+    }
+
+    document.getElementById("uploadForm").addEventListener("submit", async function (e) {
+      e.preventDefault();
+
+      const resultDiv = document.getElementById('result');
+      const fileInput = document.getElementById('fileInput');
+      const submitButton = e.target.querySelector('button[type="submit"]');
+
+      if (fileInput.files.length === 0) {
+        resultDiv.innerHTML = '<p class="error">Please select a file to upload.</p>';
+        return;
+      }
+
+      resultDiv.innerHTML = '<p class="loading">Analyzing... Please wait.</p>';
+      submitButton.disabled = true;
+
+      const formData = new FormData();
+      formData.append("media", fileInput.files[0]);
+      const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+      try {
+        const response = await fetch("/detect", {
+          method: "POST",
+          headers: {
+            'X-CSRFToken': csrfToken,
+          },
+          body: formData,
+        });
+
+        const result = await response.json();
+
+        resultDiv.className = result.class;
+        resultDiv.innerHTML = `
+          <h4>${result.text}</h4>
+          ${result.confidence ? `<p class="confidence">Confidence: <strong>${result.confidence}</strong></p>` : ''}
+        `;
+
+      } catch (error) {
+        resultDiv.className = 'error';
+        resultDiv.innerHTML = '<h4>An error occurred.</h4><p>Could not connect to the server.</p>';
+        console.error("Fetch error:", error);
+      } finally {
+        submitButton.disabled = false;
+      }
+    });
+  </script>
 </body>
 </html>

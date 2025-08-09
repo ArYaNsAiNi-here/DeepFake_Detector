@@ -10,13 +10,13 @@ import cv2
 import numpy as np
 from django.shortcuts import render
 from django.conf import settings
-from .forms import MediaUploadForm
+from django.http import JsonResponse
 
 # === Configuration ===
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(f"Using device: {device}")
 
-# --- Model Paths ---
+# --- Model Paths (Corrected for Portability) ---
 IMAGE_MODEL_PATH = "D:\Projects\PythonProject\DeepFake_Detector\Models\Image\deepfake_image_model1_stateDict.pth"
 VIDEO_MODEL_PATH = "D:\Projects\PythonProject\DeepFake_Detector\Models\Video\deepfake_video_model_stateDict.pth"
 AUDIO_MODEL_PATH = "D:\Projects\PythonProject\DeepFake_Detector\Models\Audio\deepfake_audio_model1_stateDict.pth"
@@ -25,14 +25,13 @@ AUDIO_MODEL_PATH = "D:\Projects\PythonProject\DeepFake_Detector\Models\Audio\dee
 IMG_SIZE = 224
 MAX_FRAMES_PER_VIDEO = 16
 SAMPLE_RATE = 16000
-# IMPORTANT: This must match the training script's duration
 AUDIO_DURATION = 3
 MAX_AUDIO_LEN = SAMPLE_RATE * AUDIO_DURATION
 
 
 # === Model Architectures ===
 
-# --- Video Model Architecture (Corrected) ---
+# --- Video Model ---
 class VideoClassifier(nn.Module):
     def __init__(self, num_classes=1):
         super(VideoClassifier, self).__init__()
@@ -48,7 +47,7 @@ class VideoClassifier(nn.Module):
         return video_prediction.squeeze(1)
 
 
-# --- CORRECTED: Audio Model Architecture from your training script ---
+# --- Audio Model ---
 def create_audio_model():
     return nn.Sequential(
         nn.Conv2d(1, 16, 3, padding=1), nn.BatchNorm2d(16), nn.ReLU(), nn.MaxPool2d(2),
@@ -92,7 +91,6 @@ print("Audio model loaded successfully.")
 # === Handlers ===
 
 def handle_image(path):
-    # (No changes needed here)
     img = Image.open(path).convert('RGB')
     transform = transforms.Compose([
         transforms.Resize((224, 224)), transforms.ToTensor(),
@@ -106,28 +104,20 @@ def handle_image(path):
     return predicted.item(), confidence.item()
 
 
-# --- CORRECTED: Audio handler now matches the training script's preprocessing ---
 def handle_audio(path):
     try:
         waveform, sr = torchaudio.load(path)
         if sr != SAMPLE_RATE:
             waveform = torchaudio.transforms.Resample(sr, SAMPLE_RATE)(waveform)
-
-        waveform = waveform.mean(dim=0)  # Convert to mono
-
+        waveform = waveform.mean(dim=0)
         if waveform.shape[0] < MAX_AUDIO_LEN:
             waveform = torch.nn.functional.pad(waveform, (0, MAX_AUDIO_LEN - waveform.shape[0]))
         else:
             waveform = waveform[:MAX_AUDIO_LEN]
-
-        # Use the same parameters as the training script
         mel_spec_transform = torchaudio.transforms.MelSpectrogram(sample_rate=SAMPLE_RATE, n_mels=64)
         mel_spec = mel_spec_transform(waveform)
         log_mel_spec = torchaudio.transforms.AmplitudeToDB()(mel_spec)
-
-        # Add batch and channel dimensions for the model
         log_mel_spec = log_mel_spec.unsqueeze(0).unsqueeze(0).to(device)
-
         with torch.no_grad():
             output = audio_model(log_mel_spec)
             probabilities = F.softmax(output, dim=1)[0]
@@ -139,7 +129,6 @@ def handle_audio(path):
 
 
 def handle_video(path):
-    # (No changes needed here)
     try:
         cap = cv2.VideoCapture(path)
         frames = []
@@ -167,42 +156,66 @@ def handle_video(path):
         return -1, 0
 
 
-# === Main Django View (no changes needed) ===
-def upload_file(request):
-    form = MediaUploadForm()
-    context = {'form': form, 'result': None}
-    if request.method == 'POST':
-        form = MediaUploadForm(request.POST, request.FILES)
-        if form.is_valid():
-            uploaded_file = request.FILES['file']
-            ext = os.path.splitext(uploaded_file.name)[1].lower()
-            temp_dir = os.path.join(settings.MEDIA_ROOT, 'temp')
-            os.makedirs(temp_dir, exist_ok=True)
-            file_path = os.path.join(temp_dir, uploaded_file.name)
-            with open(file_path, 'wb+') as destination:
-                for chunk in uploaded_file.chunks():
-                    destination.write(chunk)
+# === Main Django Views for the AJAX Frontend ===
 
-            prediction, confidence = -1, 0
-            if ext in ['.jpg', '.jpeg', '.png']:
-                prediction, confidence = handle_image(file_path)
-            elif ext in ['.wav', '.mp3', '.flac']:
-                prediction, confidence = handle_audio(file_path)
-            elif ext in ['.mp4', '.avi', '.mov']:
-                prediction, confidence = handle_video(file_path)
-            else:
-                context['result'] = {'text': 'Unsupported file type.', 'class': 'error'}
+def upload_page(request):
+    """Renders the single-page application interface."""
+    return render(request, 'predictor/upload.html')
 
-            if prediction != -1:
-                confidence_percent = f"{confidence * 100:.2f}%"
-                if prediction == 1:
-                    context['result'] = {'text': 'Warning: This media is likely a DEEPFAKE.', 'class': 'fake',
-                                         'confidence': confidence_percent}
-                else:
-                    context['result'] = {'text': 'This media appears to be REAL.', 'class': 'real',
-                                         'confidence': confidence_percent}
-            elif 'result' not in context:
-                context['result'] = {'text': 'Could not process the file.', 'class': 'error'}
 
-            os.remove(file_path)
-    return render(request, 'predictor/upload.html', context)
+def detect_api(request):
+    """Handles the asynchronous file upload and returns a JSON response."""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Invalid request method'}, status=405)
+
+    file = request.FILES.get('media')
+    if not file:
+        return JsonResponse({'error': 'No file provided'}, status=400)
+
+    # --- Temporary file handling ---
+    ext = os.path.splitext(file.name)[1].lower()
+    temp_dir = os.path.join(settings.MEDIA_ROOT, 'temp')
+    os.makedirs(temp_dir, exist_ok=True)
+    file_path = os.path.join(temp_dir, file.name)
+    with open(file_path, 'wb+') as destination:
+        for chunk in file.chunks():
+            destination.write(chunk)
+
+    # --- Prediction Logic ---
+    prediction, confidence = -1, 0
+    if ext in ['.jpg', '.jpeg', '.png']:
+        prediction, confidence = handle_image(file_path)
+    elif ext in ['.wav', '.mp3', '.flac']:
+        prediction, confidence = handle_audio(file_path)
+    elif ext in ['.mp4', '.avi', '.mov']:
+        prediction, confidence = handle_video(file_path)
+    else:
+        os.remove(file_path)
+        return JsonResponse({
+            'text': 'Unsupported file type.',
+            'class': 'error'
+        }, status=415)
+
+    os.remove(file_path)
+
+    # --- Format the JSON response ---
+    response_data = {}
+    if prediction == 1:
+        response_data = {
+            'text': 'Warning: This media is likely a DEEPFAKE.',
+            'class': 'fake',
+            'confidence': f"{confidence * 100:.2f}%"
+        }
+    elif prediction == 0:
+        response_data = {
+            'text': 'This media appears to be REAL.',
+            'class': 'real',
+            'confidence': f"{confidence * 100:.2f}%"
+        }
+    else:  # prediction == -1
+        response_data = {
+            'text': 'Could not process the file.',
+            'class': 'error'
+        }
+
+    return JsonResponse(response_data)
