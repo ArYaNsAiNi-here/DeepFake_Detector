@@ -11,33 +11,36 @@ import numpy as np
 from django.shortcuts import render
 from django.conf import settings
 from django.http import JsonResponse
+from django.utils import timezone
+
+# === Import Database Model ===
+from .models import UploadHistory
 
 # === Configuration ===
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(f"Using device: {device}")
 
-# --- Model Paths (Corrected for Portability) ---
-IMAGE_MODEL_PATH = "D:\Projects\PythonProject\DeepFake_Detector\Models\Image\deepfake_image_model1_stateDict.pth"
-VIDEO_MODEL_PATH = "D:\Projects\PythonProject\DeepFake_Detector\Models\Video\deepfake_video_model_stateDict.pth"
-AUDIO_MODEL_PATH = "D:\Projects\PythonProject\DeepFake_Detector\Models\Audio\deepfake_audio_model1_stateDict.pth"
+# --- Model Paths ---
+IMAGE_MODEL_PATH = "D:\\Projects\\PythonProject\\DeepFake_Detector\\Models\\Image\\deepfake_image_model1_stateDict.pth"
+VIDEO_MODEL_PATH = "D:\\Projects\\PythonProject\\DeepFake_Detector\\Models\\Video\\deepfake_video_model_stateDict.pth"
+AUDIO_MODEL_PATH = "D:\\Projects\\PythonProject\\DeepFake_Detector\\Models\\Audio\\deepfake_audio_model1_stateDict.pth"
 
-# --- Model-specific Configs ---
 IMG_SIZE = 224
 MAX_FRAMES_PER_VIDEO = 16
 SAMPLE_RATE = 16000
 AUDIO_DURATION = 3
 MAX_AUDIO_LEN = SAMPLE_RATE * AUDIO_DURATION
 
-
 # === Model Architectures ===
-
-# --- Video Model ---
 class VideoClassifier(nn.Module):
     def __init__(self, num_classes=1):
         super(VideoClassifier, self).__init__()
         self.cnn = models.efficientnet_b0(weights=None)
         num_features = self.cnn.classifier[1].in_features
-        self.cnn.classifier = nn.Sequential(nn.Dropout(p=0.2, inplace=True), nn.Linear(num_features, num_classes))
+        self.cnn.classifier = nn.Sequential(
+            nn.Dropout(p=0.2, inplace=True),
+            nn.Linear(num_features, num_classes)
+        )
 
     def forward(self, x):
         batch_size, num_frames, C, H, W = x.shape
@@ -46,8 +49,6 @@ class VideoClassifier(nn.Module):
         video_prediction = torch.mean(frame_features, dim=1)
         return video_prediction.squeeze(1)
 
-
-# --- Audio Model ---
 def create_audio_model():
     return nn.Sequential(
         nn.Conv2d(1, 16, 3, padding=1), nn.BatchNorm2d(16), nn.ReLU(), nn.MaxPool2d(2),
@@ -61,35 +62,22 @@ def create_audio_model():
         nn.Linear(256, 2)
     )
 
-
-# === Load All Models ===
-
-# --- Image Model ---
+# === Load Models ===
 image_model = models.resnet50(weights=None)
 num_ftrs = image_model.fc.in_features
 image_model.fc = torch.nn.Linear(num_ftrs, 2)
 image_model.load_state_dict(torch.load(IMAGE_MODEL_PATH, map_location=device))
-image_model.to(device)
-image_model.eval()
-print("Image model loaded successfully.")
+image_model.to(device).eval()
 
-# --- Video Model ---
 video_model = VideoClassifier(num_classes=1)
 video_model.load_state_dict(torch.load(VIDEO_MODEL_PATH, map_location=device))
-video_model.to(device)
-video_model.eval()
-print("Video model loaded successfully.")
+video_model.to(device).eval()
 
-# --- Audio Model ---
 audio_model = create_audio_model()
 audio_model.load_state_dict(torch.load(AUDIO_MODEL_PATH, map_location=device))
-audio_model.to(device)
-audio_model.eval()
-print("Audio model loaded successfully.")
-
+audio_model.to(device).eval()
 
 # === Handlers ===
-
 def handle_image(path):
     img = Image.open(path).convert('RGB')
     transform = transforms.Compose([
@@ -103,7 +91,6 @@ def handle_image(path):
         confidence, predicted = torch.max(probabilities, 0)
     return predicted.item(), confidence.item()
 
-
 def handle_audio(path):
     try:
         waveform, sr = torchaudio.load(path)
@@ -114,8 +101,7 @@ def handle_audio(path):
             waveform = torch.nn.functional.pad(waveform, (0, MAX_AUDIO_LEN - waveform.shape[0]))
         else:
             waveform = waveform[:MAX_AUDIO_LEN]
-        mel_spec_transform = torchaudio.transforms.MelSpectrogram(sample_rate=SAMPLE_RATE, n_mels=64)
-        mel_spec = mel_spec_transform(waveform)
+        mel_spec = torchaudio.transforms.MelSpectrogram(sample_rate=SAMPLE_RATE, n_mels=64)(waveform)
         log_mel_spec = torchaudio.transforms.AmplitudeToDB()(mel_spec)
         log_mel_spec = log_mel_spec.unsqueeze(0).unsqueeze(0).to(device)
         with torch.no_grad():
@@ -127,12 +113,10 @@ def handle_audio(path):
         print(f"Error processing audio: {e}")
         return -1, 0
 
-
 def handle_video(path):
     try:
         cap = cv2.VideoCapture(path)
-        frames = []
-        total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        frames, total_frames = [], int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
         frame_indices = np.linspace(0, total_frames - 1, MAX_FRAMES_PER_VIDEO, dtype=int)
         for i in frame_indices:
             cap.set(cv2.CAP_PROP_POS_FRAMES, i)
@@ -155,16 +139,11 @@ def handle_video(path):
         print(f"Error processing video: {e}")
         return -1, 0
 
-
-# === Main Django Views for the AJAX Frontend ===
-
+# === Django Views ===
 def upload_page(request):
-    """Renders the single-page application interface."""
     return render(request, 'predictor/upload.html')
 
-
 def detect_api(request):
-    """Handles the asynchronous file upload and returns a JSON response."""
     if request.method != 'POST':
         return JsonResponse({'error': 'Invalid request method'}, status=405)
 
@@ -172,50 +151,44 @@ def detect_api(request):
     if not file:
         return JsonResponse({'error': 'No file provided'}, status=400)
 
-    # --- Temporary file handling ---
-    ext = os.path.splitext(file.name)[1].lower()
-    temp_dir = os.path.join(settings.MEDIA_ROOT, 'temp')
-    os.makedirs(temp_dir, exist_ok=True)
-    file_path = os.path.join(temp_dir, file.name)
+    # Save file permanently in MEDIA_ROOT/uploads/
+    upload_dir = os.path.join(settings.MEDIA_ROOT, 'uploads')
+    os.makedirs(upload_dir, exist_ok=True)
+    file_path = os.path.join(upload_dir, file.name)
     with open(file_path, 'wb+') as destination:
         for chunk in file.chunks():
             destination.write(chunk)
 
-    # --- Prediction Logic ---
-    prediction, confidence = -1, 0
+    # Predict
+    ext = os.path.splitext(file.name)[1].lower()
+    prediction, confidence, media_type = -1, 0, "unknown"
+
     if ext in ['.jpg', '.jpeg', '.png']:
         prediction, confidence = handle_image(file_path)
+        media_type = "image"
     elif ext in ['.wav', '.mp3', '.flac']:
         prediction, confidence = handle_audio(file_path)
+        media_type = "audio"
     elif ext in ['.mp4', '.avi', '.mov']:
         prediction, confidence = handle_video(file_path)
+        media_type = "video"
     else:
-        os.remove(file_path)
-        return JsonResponse({
-            'text': 'Unsupported file type.',
-            'class': 'error'
-        }, status=415)
+        return JsonResponse({'text': 'Unsupported file type.', 'class': 'error'}, status=415)
 
-    os.remove(file_path)
+    # Save DB record
+    UploadHistory.objects.create(
+        user=request.user if request.user.is_authenticated else None,
+        file=os.path.relpath(file_path, settings.MEDIA_ROOT),
+        media_type=media_type,
+        prediction="Deepfake" if prediction == 1 else "Real" if prediction == 0 else "Error",
+        confidence=confidence,
+        uploaded_at=timezone.now()
+    )
 
-    # --- Format the JSON response ---
-    response_data = {}
+    # Response
     if prediction == 1:
-        response_data = {
-            'text': 'Warning: This media is likely a DEEPFAKE.',
-            'class': 'fake',
-            'confidence': f"{confidence * 100:.2f}%"
-        }
+        return JsonResponse({'text': '⚠️ Likely DEEPFAKE', 'class': 'fake', 'confidence': f"{confidence*100:.2f}%"})
     elif prediction == 0:
-        response_data = {
-            'text': 'This media appears to be REAL.',
-            'class': 'real',
-            'confidence': f"{confidence * 100:.2f}%"
-        }
-    else:  # prediction == -1
-        response_data = {
-            'text': 'Could not process the file.',
-            'class': 'error'
-        }
-
-    return JsonResponse(response_data)
+        return JsonResponse({'text': '✅ Appears REAL', 'class': 'real', 'confidence': f"{confidence*100:.2f}%"})
+    else:
+        return JsonResponse({'text': '❌ Could not process file.', 'class': 'error'})
