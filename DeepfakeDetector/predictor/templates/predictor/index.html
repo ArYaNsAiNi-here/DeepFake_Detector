@@ -1,0 +1,45 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Deepfake Detection Platform</title>
+  <link rel="stylesheet" href="{% static 'predictor/style.css' %}" />
+</head>
+<body>
+  <div class="overlay">
+    <div class="container">
+      <header>
+        <h1>🎯 Deepfake Detection Platform</h1>
+        <p>Secure, AI-powered analysis for audio, image, and video files</p>
+      </header>
+
+      <section class="intro">
+        <h2>🔍 Check Any File Instantly</h2>
+        <p>Upload your media below and detect synthetic manipulations using advanced backend verification.</p>
+      </section>
+
+      <form id="uploadForm" enctype="multipart/form-data">
+        {% csrf_token %}
+        <label for="fileInput">📁 Upload Media File:</label>
+        <input type="file" id="fileInput" name="media" accept="audio/*,video/*,image/*" required />
+
+        <div class="button-group">
+          <button type="submit" class="btn large-btn">🚀 Detect</button>
+          <button type="button" class="btn large-btn" onclick="clearInputs()">🧹 Clear</button>
+          <button type="button" class="btn large-btn" onclick="showInfo()">📘 Info</button>
+        </div>
+      </form>
+
+      <div id="result"></div>
+
+      <footer>
+        &copy; 2025 Deepfake Safety Initiative | Created by Code10thrive
+      </footer>
+    </div>
+  </div>
+
+  <script src="{% static 'predictor/script.js' %}"></script>
+</body>
+</html>

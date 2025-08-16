@@ -8,7 +8,35 @@ def dashboard(request):
     if not request.user.is_authenticated:
         return redirect('login')
 
-    history = UploadHistory.objects.filter(user=request.user).order_by('-uploaded_at')
+    history_qs = UploadHistory.objects.filter(user=request.user).order_by('-uploaded_at')
+
+    # Process history to add accuracy display + numeric value
+    history = []
+    for item in history_qs:
+        acc_value = None
+        acc_display = "N/A"
+
+        if item.accuracy:
+            try:
+                # If accuracy stored like 0.98807 → convert to %
+                if float(item.accuracy) <= 1:
+                    acc_value = float(item.accuracy) * 100
+                else:
+                    acc_value = float(item.accuracy)
+
+                acc_display = f"{acc_value:.2f}%"
+            except:
+                acc_display = str(item.accuracy)
+
+        history.append({
+            "file": item.file,
+            "media_type": item.media_type,
+            "prediction": item.prediction,
+            "accuracy": acc_display,       # "98.80%"
+            "accuracy_value": acc_value or 0,  # 98.80
+            "uploaded_at": item.uploaded_at,
+        })
+
     return render(request, "UserInfo/dashboard.html", {"history": history})
 
 

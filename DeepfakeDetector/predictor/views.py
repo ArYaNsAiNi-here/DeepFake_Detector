@@ -10,7 +10,7 @@ import cv2
 import numpy as np
 from django.shortcuts import render
 from django.conf import settings
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.utils import timezone
 
 # === Import Database Model ===
@@ -31,7 +31,8 @@ SAMPLE_RATE = 16000
 AUDIO_DURATION = 3
 MAX_AUDIO_LEN = SAMPLE_RATE * AUDIO_DURATION
 
-# === Model Architectures ===
+
+# === Video Model ===
 class VideoClassifier(nn.Module):
     def __init__(self, num_classes=1):
         super(VideoClassifier, self).__init__()
@@ -49,6 +50,7 @@ class VideoClassifier(nn.Module):
         video_prediction = torch.mean(frame_features, dim=1)
         return video_prediction.squeeze(1)
 
+
 def create_audio_model():
     return nn.Sequential(
         nn.Conv2d(1, 16, 3, padding=1), nn.BatchNorm2d(16), nn.ReLU(), nn.MaxPool2d(2),
@@ -62,10 +64,11 @@ def create_audio_model():
         nn.Linear(256, 2)
     )
 
+
 # === Load Models ===
 image_model = models.resnet50(weights=None)
 num_ftrs = image_model.fc.in_features
-image_model.fc = torch.nn.Linear(num_ftrs, 2)
+image_model.fc = nn.Linear(num_ftrs, 2)
 image_model.load_state_dict(torch.load(IMAGE_MODEL_PATH, map_location=device))
 image_model.to(device).eval()
 
@@ -77,7 +80,6 @@ audio_model = create_audio_model()
 audio_model.load_state_dict(torch.load(AUDIO_MODEL_PATH, map_location=device))
 audio_model.to(device).eval()
 
-# === Handlers ===
 def handle_image(path):
     img = Image.open(path).convert('RGB')
     transform = transforms.Compose([
@@ -139,9 +141,10 @@ def handle_video(path):
         print(f"Error processing video: {e}")
         return -1, 0
 
-# === Django Views ===
+# === Views ===
 def upload_page(request):
-    return render(request, 'predictor/upload.html')
+    return render(request, 'predictor/index.html')
+
 
 def detect_api(request):
     if request.method != 'POST':
@@ -151,44 +154,44 @@ def detect_api(request):
     if not file:
         return JsonResponse({'error': 'No file provided'}, status=400)
 
-    # Save file permanently in MEDIA_ROOT/uploads/
     upload_dir = os.path.join(settings.MEDIA_ROOT, 'uploads')
     os.makedirs(upload_dir, exist_ok=True)
     file_path = os.path.join(upload_dir, file.name)
+
     with open(file_path, 'wb+') as destination:
         for chunk in file.chunks():
             destination.write(chunk)
 
-    # Predict
+    # File type check
     ext = os.path.splitext(file.name)[1].lower()
-    prediction, confidence, media_type = -1, 0, "unknown"
+    prediction, accuracy, media_type = -1, 0, "unknown"
 
     if ext in ['.jpg', '.jpeg', '.png']:
-        prediction, confidence = handle_image(file_path)
+        prediction, accuracy = handle_image(file_path)
         media_type = "image"
     elif ext in ['.wav', '.mp3', '.flac']:
-        prediction, confidence = handle_audio(file_path)
+        prediction, accuracy = handle_audio(file_path)
         media_type = "audio"
     elif ext in ['.mp4', '.avi', '.mov']:
-        prediction, confidence = handle_video(file_path)
+        prediction, accuracy = handle_video(file_path)
         media_type = "video"
     else:
         return JsonResponse({'text': 'Unsupported file type.', 'class': 'error'}, status=415)
 
-    # Save DB record
+    # Save to DB
     UploadHistory.objects.create(
         user=request.user if request.user.is_authenticated else None,
         file=os.path.relpath(file_path, settings.MEDIA_ROOT),
         media_type=media_type,
         prediction="Deepfake" if prediction == 1 else "Real" if prediction == 0 else "Error",
-        confidence=confidence,
+        accuracy=accuracy,
         uploaded_at=timezone.now()
     )
 
     # Response
     if prediction == 1:
-        return JsonResponse({'text': '⚠️ Likely DEEPFAKE', 'class': 'fake', 'confidence': f"{confidence*100:.2f}%"})
+        return JsonResponse({'text': '⚠️ Likely DEEPFAKE', 'class': 'fake', 'Accuracy': f"{accuracy*100:.2f}%"})
     elif prediction == 0:
-        return JsonResponse({'text': '✅ Appears REAL', 'class': 'real', 'confidence': f"{confidence*100:.2f}%"})
+        return JsonResponse({'text': '✅ Appears REAL', 'class': 'real', 'Accuracy': f"{accuracy*100:.2f}%"})
     else:
         return JsonResponse({'text': '❌ Could not process file.', 'class': 'error'})
