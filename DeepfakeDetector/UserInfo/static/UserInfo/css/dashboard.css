@@ -1,0 +1,72 @@
+body {
+  font-family: 'Segoe UI', sans-serif;
+  background: #f4f8fb;
+  margin: 0;
+}
+
+.navbar {
+  display: flex;
+  justify-content: space-between;
+  background: #4ecdc4;
+  padding: 1rem 2rem;
+  color: white;
+}
+
+.navbar nav a {
+  margin-left: 15px;
+  color: white;
+  text-decoration: none;
+  transition: 0.3s;
+}
+
+.navbar nav a:hover {
+  text-decoration: underline;
+}
+
+.dash-container {
+  padding: 2rem;
+  animation: fadeIn 0.5s ease-in-out;
+}
+
+.card-container {
+  display: flex;
+  gap: 2rem;
+  margin-top: 2rem;
+}
+
+.card {
+  flex: 1;
+  padding: 2rem;
+  background: white;
+  border-radius: 12px;
+  text-align: center;
+  font-size: 1.2em;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+  transition: transform 0.3s, background 0.3s;
+}
+
+.card:hover {
+  transform: translateY(-5px);
+  background: #e0f7f5;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1rem;
+}
+
+th, td {
+  padding: 10px;
+  border-bottom: 1px solid #ddd;
+  text-align: center;
+}
+
+tr:hover {
+  background: #f1f1f1;
+}
+
+@keyframes fadeIn {
+  from {opacity: 0;}
+  to {opacity: 1;}
+}

@@ -1,0 +1,140 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Dashboard | Deepfake Detector</title>
+  <link rel="stylesheet" href="{% static 'UserInfo/css/dashboard.css' %}">
+  <!-- Bootstrap for badge styles -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+  <header class="navbar">
+    <h1>🎯 Deepfake Detector Dashboard</h1>
+    <nav>
+      <a href="{% url 'dashboard' %}">🏠 Home</a>
+      <a href="/predictor/">🔍 Predict</a>
+      <a href="{% url 'dashboard' %}?history=true">📜 History</a>
+      <a href="{% url 'logout' %}">🚪 Logout</a>
+    </nav>
+  </header>
+
+  <main class="dash-container">
+    {% if request.GET.history %}
+      <h2>📜 Upload History</h2>
+      {% if history %}
+        <table class="table table-bordered table-striped">
+          <thead>
+            <tr>
+              <th>File</th>
+              <th>Type</th>
+              <th>Prediction</th>
+              <th>Accuracy</th>
+              <th>Date</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in history %}
+              <tr>
+                <td>{{ item.file.name }}</td>
+                <td>{{ item.media_type }}</td>
+
+                <!-- Prediction Badge -->
+                <td>
+                  {% if item.prediction == "Real" %}
+                    <span class="badge bg-success">✅ Real</span>
+                  {% elif item.prediction == "Deepfake" %}
+                    <span class="badge bg-danger">❌ Deepfake</span>
+                  {% else %}
+                    <span class="badge bg-secondary">{{ item.prediction }}</span>
+                  {% endif %}
+                </td>
+
+                <!-- Accuracy Badge -->
+                <td>
+                  {% if item.accuracy %}
+                    {% if item.accuracy_value >= 90 %}
+                      <span class="badge bg-success">{{ item.accuracy }}</span>
+                    {% elif item.accuracy_value >= 70 %}
+                      <span class="badge bg-warning text-dark">{{ item.accuracy }}</span>
+                    {% else %}
+                      <span class="badge bg-danger">{{ item.accuracy }}</span>
+                    {% endif %}
+                  {% else %}
+                    <span class="badge bg-secondary">N/A</span>
+                  {% endif %}
+                </td>
+
+                <td>{{ item.uploaded_at }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        <p>No history found.</p>
+      {% endif %}
+    {% else %}
+      <section class="welcome">
+        <h2>👋 Welcome, {{ request.user.username }}!</h2>
+        <p>Select an action:</p>
+        <div class="card-container">
+          <a class="card" href="/predictor/">🔍 Run Prediction</a>
+          <a class="card" href="{% url 'dashboard' %}?history=true">📜 View History</a>
+        </div>
+      </section>
+
+      <!-- Optional: show latest history snippet -->
+      <section class="history">
+        <h2>📜 Your Upload History</h2>
+        <table class="table table-bordered">
+          <tr>
+            <th>File</th>
+            <th>Type</th>
+            <th>Prediction</th>
+            <th>Accuracy</th>
+            <th>Date</th>
+          </tr>
+          {% for item in history %}
+          <tr>
+            <td>{{ item.file.name }}</td>
+            <td>{{ item.media_type }}</td>
+
+            <td>
+              {% if item.prediction == "Real" %}
+                <span class="badge bg-success">✅ Real</span>
+              {% elif item.prediction == "Deepfake" %}
+                <span class="badge bg-danger">❌ Deepfake</span>
+              {% else %}
+                <span class="badge bg-secondary">{{ item.prediction }}</span>
+              {% endif %}
+            </td>
+
+            <td>
+              {% if item.accuracy %}
+                {% if item.accuracy_value >= 90 %}
+                  <span class="badge bg-success">{{ item.accuracy }}</span>
+                {% elif item.accuracy_value >= 70 %}
+                  <span class="badge bg-warning text-dark">{{ item.accuracy }}</span>
+                {% else %}
+                  <span class="badge bg-danger">{{ item.accuracy }}</span>
+                {% endif %}
+              {% else %}
+                <span class="badge bg-secondary">N/A</span>
+              {% endif %}
+            </td>
+
+            <td>{{ item.uploaded_at }}</td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="5">No history available.</td>
+          </tr>
+          {% endfor %}
+        </table>
+      </section>
+    {% endif %}
+  </main>
+
+  <script src="{% static 'UserInfo/js/dashboard.js' %}"></script>
+</body>
+</html>

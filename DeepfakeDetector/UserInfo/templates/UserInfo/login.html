@@ -1,0 +1,29 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Login | Deepfake Detector</title>
+  <link rel="stylesheet" href="{% static 'UserInfo/css/auth.css' %}">
+</head>
+<body>
+  <div class="auth-container">
+    <h2>🔑 Login</h2>
+    <form method="post" class="auth-form">
+      {% csrf_token %}
+      <input type="text" name="username" placeholder="👤 Username" required>
+      <input type="password" name="password" placeholder="🔒 Password" required>
+      <button type="submit">Login</button>
+    </form>
+    <p>Don’t have an account? <a href="{% url 'register' %}">Register</a></p>
+    {% if messages %}
+      <div class="messages">
+        {% for message in messages %}
+          <p class="msg">{{ message }}</p>
+        {% endfor %}
+      </div>
+    {% endif %}
+  </div>
+  <script src="{% static 'UserInfo/js/auth.js' %}"></script>
+</body>
+</html>
