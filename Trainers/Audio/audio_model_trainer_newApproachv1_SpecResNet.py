@@ -13,56 +13,45 @@ from tqdm import tqdm
 from torch import amp
 import warnings
 
-# Suppress the UserWarning from torchaudio.load as it's a deprecation notice for a future release
-warnings.filterwarnings('ignore', category=UserWarning)
+warnings.filterwarnings('ignore', category=UserWarning) #supress
 
-# === Configuration ===
-# IMPORTANT: Update ROOT_DIR to the correct path of your dataset on your system
-ROOT_DIR = 'D:\\Projects\\PythonProject\\Dataset\\release_in_the_wild' # Make sure this path is correct
+#Config
+ROOT_DIR = 'D:\\Projects\\PythonProject\\Dataset\\release_in_the_wild'
 MODEL_STATE_DICT_PATH = "D:/Projects/PythonProject/DeepFake_Detector/Models/Audio/deepfake_audio_specresnet.pth"
 FULL_MODEL_PATH = "D:/Projects/PythonProject/DeepFake_Detector/Models/Audio/deepfake_audio_specresnet_stateDict.pth"
 
-# Audio processing parameters
-SAMPLE_RATE = 16000  # Standard sample rate for many audio tasks
-DURATION = 5         # Duration of audio clips in seconds
-MAX_LEN = SAMPLE_RATE * DURATION # Max number of samples per clip
+#Audio-PrePro
+SAMPLE_RATE = 16000
+DURATION = 10
+MAX_LEN = SAMPLE_RATE * DURATION
 
-# Training hyperparameters
-BATCH_SIZE = 48
+#Train Para
+BATCH_SIZE = 64
 NUM_EPOCHS = 20
 LEARNING_RATE = 0.0015
 
-# Determine device for training (GPU if available, else CPU)
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-# === Utility Functions ===
+# PrePro2
 def convert_to_wav(input_path, output_path):
-    """Converts any audio file supported by pydub to WAV format."""
     try:
         audio = AudioSegment.from_file(input_path)
         audio.export(output_path, format="wav")
         return True
     except Exception:
-        # Silently fail for now, or add print(f"Could not convert {input_path}: {e}") for debugging
         return False
 
-# === Dataset Preparation for Structured Directories ===
+#Data-Prep
 def get_filepaths_and_labels(split_dir):
-    """
-    Collects file paths and assigns labels (0 for 'real', 1 for 'fake')
-    from structured 'real' and 'fake' subdirectories within a split.
-    Handles non-WAV files by converting them.
-    """
     paths, labels = [], []
-    for label, cls in enumerate(['real', 'fake']): # 0 for real, 1 for fake
+    for label, cls in enumerate(['real', 'fake']):
         class_dir = os.path.join(split_dir, cls)
         if not os.path.exists(class_dir):
-            continue # Skip if class directory doesn't exist for this split
+            continue
 
         for f in os.listdir(class_dir):
             if f.lower().endswith(('.wav', '.mp3', '.flac')):
                 filepath = os.path.join(class_dir, f)
-                # Convert to WAV if not already, to ensure torchaudio compatibility
                 if not f.lower().endswith(".wav"):
                     wav_path = os.path.splitext(filepath)[0] + ".wav"
                     if convert_to_wav(filepath, wav_path):
@@ -73,12 +62,12 @@ def get_filepaths_and_labels(split_dir):
                     labels.append(label)
     return paths, labels
 
-# === Mel Spectrogram Transform (initialized on CPU to work with DataLoader) ===
+#Mel-Spec CPU Tensor
 mel_transform = torchaudio.transforms.MelSpectrogram(
     sample_rate=SAMPLE_RATE, n_mels=128, n_fft=1024, hop_length=512
-) # No .to(device) here, transform will be applied to CPU tensors
+)
 
-# === PyTorch Dataset Class ===
+#PyTorch Data
 class AudioDataset(Dataset):
     def __init__(self, file_paths, labels, transform):
         self.file_paths = file_paths
@@ -93,28 +82,22 @@ class AudioDataset(Dataset):
         label = self.labels[idx]
         try:
             waveform, sr = torchaudio.load(filepath)
-            # Resample if sample rate doesn't match config
             if sr != SAMPLE_RATE:
                 waveform = torchaudio.transforms.Resample(sr, SAMPLE_RATE)(waveform)
-            # Convert stereo to mono by taking the mean across channels
             if waveform.shape[0] > 1:
                 waveform = torch.mean(waveform, dim=0, keepdim=True)
 
-            # Pad or truncate waveform to a fixed length (MAX_LEN)
             if waveform.shape[1] < MAX_LEN:
                 waveform = torch.nn.functional.pad(waveform, (0, MAX_LEN - waveform.shape[1]))
             else:
                 waveform = waveform[:, :MAX_LEN]
 
-            # Apply Mel spectrogram transformation (waveform is on CPU here)
             mel_spec = self.transform(waveform)
             return mel_spec, torch.tensor(label, dtype=torch.long)
         except Exception:
-            # Return dummy tensors and label for corrupted/unreadable files.
-            # This prevents DataLoader from crashing but might need more robust handling for large datasets.
             return torch.zeros((1, 128, 501)), torch.tensor(0, dtype=torch.long)
 
-# === Model Architecture: Spec-ResNet ===
+#Spec-ResNet
 class ResidualBlock(nn.Module):
     def __init__(self, in_channels, out_channels, stride=1):
         super(ResidualBlock, self).__init__()
@@ -145,7 +128,7 @@ class SpecResNet(nn.Module):
         self.bn1 = nn.BatchNorm2d(64)
         self.relu = nn.ReLU(inplace=True)
 
-        # Corrected indexing for num_blocks
+        #Num_Block Error Debugs
         self.layer1 = self._make_layer(block, 64, num_blocks[0], stride=1)
         self.layer2 = self._make_layer(block, 128, num_blocks[1], stride=2)
         self.layer3 = self._make_layer(block, 256, num_blocks[2], stride=2)
@@ -173,79 +156,66 @@ class SpecResNet(nn.Module):
         return self.linear(out)
 
 def create_spec_resnet():
-    # Defines a simple ResNet-like architecture with 4 stages
     return SpecResNet(ResidualBlock, [2, 2, 2, 2])
 
 # === GPU Monitor ===
 def print_gpu_usage():
-    """Prints current GPU utilization and memory usage."""
     try:
         gpus = GPUtil.getGPUs()
         for gpu in gpus:
             print(f"GPU {gpu.id}: {gpu.name} | Load: {gpu.load*100:.1f}% | Mem: {gpu.memoryUsed}/{gpu.memoryTotal} MB")
     except Exception:
-        pass # Silently pass if GPUtil is not installed or no GPU is found
+        pass
 
-# === Main Training and Validation Function ===
+#Train&Val
 def train_model():
     print("Using device:", device)
     if device.type == 'cuda':
         print("GPU Name:", torch.cuda.get_device_name(0))
 
     print("Loading and preparing dataset...")
-    # Define paths for each data split
     train_dir = os.path.join(ROOT_DIR, "train")
     val_dir = os.path.join(ROOT_DIR, "val")
-    test_dir = os.path.join(ROOT_DIR, "test") # If you plan to use a test set for final evaluation
+    test_dir = os.path.join(ROOT_DIR, "test")
 
-    # Get file paths and labels for each split
     train_paths, train_labels = get_filepaths_and_labels(train_dir)
     val_paths, val_labels = get_filepaths_and_labels(val_dir)
-    # test_paths, test_labels = get_filepaths_and_labels(test_dir) # Uncomment if you need the test set
 
     # Create datasets and dataloaders
     train_dataset = AudioDataset(train_paths, train_labels, mel_transform)
     val_dataset = AudioDataset(val_paths, val_labels, mel_transform)
-    # test_dataset = AudioDataset(test_paths, test_labels, mel_transform) # Uncomment if you need the test set
 
     train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True, num_workers=4, pin_memory=True)
     val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=4, pin_memory=True)
-    # test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=4, pin_memory=True) # Uncomment if you need the test set
 
     print(f"Training on {len(train_dataset)} samples, validating on {len(val_dataset)} samples.")
 
-    # Initialize model, loss function, and optimizer
+    # Model, Loss, ADAM
     model = create_spec_resnet().to(device)
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
-
-    # Initialize GradScaler for Automatic Mixed Precision (AMP)
-    # Correct usage: provide device_type and enabled status
     scaler = amp.GradScaler(enabled=(device.type == 'cuda'))
 
     history = {'train_loss': [], 'train_acc': [], 'val_loss': [], 'val_acc': [], 'time': []}
 
-    # === Training Loop ===
+    #TrainLoop
     for epoch in range(NUM_EPOCHS):
         start_time = time.time()
-        model.train() # Set model to training mode
+        model.train()
         running_loss, correct, total = 0.0, 0, 0
 
-        # Iterate over batches in the training loader
+        #Batch Iteration
         for inputs, targets in tqdm(train_loader, desc=f"Epoch {epoch + 1}/{NUM_EPOCHS} [Train]"):
-            # Move input tensors and labels to the training device (GPU)
             inputs, targets = inputs.to(device), targets.to(device)
 
-            # Use autocast for mixed precision training
-            # Correct usage: provide device_type, optionally dtype, and enabled status
             with amp.autocast(device_type=device.type, dtype=torch.float16, enabled=(device.type == 'cuda')):
                 outputs = model(inputs)
                 loss = criterion(outputs, targets)
 
-            optimizer.zero_grad() # Clear gradients from previous step
-            scaler.scale(loss).backward() # Scale loss and perform backward pass
-            scaler.step(optimizer) # Update model parameters
-            scaler.update() # Update the scaler for the next iteration
+            optimizer.zero_grad()
+            scaler.scale(loss).backward()
+            scaler.step(optimizer)
+            scaler.update()
 
             running_loss += loss.item() * inputs.size(0)
             _, predicted = torch.max(outputs.data, 1)
@@ -257,10 +227,10 @@ def train_model():
         history['train_loss'].append(train_loss)
         history['train_acc'].append(train_acc)
 
-        # === Validation Loop ===
-        model.eval() # Set model to evaluation mode
+        #ValLoop
+        model.eval()
         val_loss, val_correct, val_total = 0.0, 0, 0
-        with torch.no_grad(): # Disable gradient calculations for validation
+        with torch.no_grad():
             for inputs, targets in tqdm(val_loader, desc=f"Epoch {epoch + 1}/{NUM_EPOCHS} [Val]"):
                 inputs, targets = inputs.to(device), targets.to(device)
                 with amp.autocast(device_type=device.type, dtype=torch.float16, enabled=(device.type == 'cuda')):
@@ -280,18 +250,17 @@ def train_model():
         epoch_time = time.time() - start_time
         history['time'].append(epoch_time)
 
-        # Print epoch summary
+        #Summary/Epoch
         print(f"Epoch {epoch+1}/{NUM_EPOCHS} | Train Loss: {train_loss:.4f}, Train Acc: {train_acc:.2f}% | "
               f"Val Loss: {val_loss:.4f}, Val Acc: {val_acc:.2f}% | Time: {epoch_time:.2f}s")
         if device.type == 'cuda':
-            print_gpu_usage() # Display GPU usage if on CUDA
+            print_gpu_usage()
 
-    # === Save Model and Plot Training History ===
-    torch.save(model.state_dict(), MODEL_STATE_DICT_PATH) # Save model's learned parameters
-    torch.save(model, FULL_MODEL_PATH) # Save the entire model (architecture + parameters)
+    #SaveModel
+    torch.save(model.state_dict(), MODEL_STATE_DICT_PATH)
+    torch.save(model, FULL_MODEL_PATH)
     print(f"Model state saved to {MODEL_STATE_DICT_PATH}")
 
-    # Plotting training history
     epochs_range = range(1, NUM_EPOCHS + 1)
     plt.figure(figsize=(18, 5))
 
@@ -309,8 +278,8 @@ def train_model():
     plt.plot(epochs_range, history['time'], 's-', label='Epoch Time')
     plt.title("Time per Epoch"); plt.legend(); plt.grid(True)
 
-    plt.tight_layout() # Adjust plot to prevent overlapping titles/labels
-    plt.show() # Display the plots
+    plt.tight_layout()
+    plt.show()
 
 if __name__ == "__main__":
     train_model()
