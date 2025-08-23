@@ -1,7 +1,7 @@
 <h1 align="center">DeepFake Detector</h1>
 
 <p align="center">
-  A Python-based web application by <strong>Team Code10Thrive</strong> to detect deepfake content in images and videos using machine learning.
+  A Python-based web application developed to detect deepfake content in images and videos using machine learning.
 </p>
 
 <!-- BADGES -->
@@ -49,7 +49,8 @@ This project is built with the following technologies:
     *   [CSS](https://developer.mozilla.org/en-US/docs/Web/CSS)
     *   [JavaScript](https://developer.mozilla.org/en-US/docs/Web/JavaScript)
 *   **Machine Learning Libraries:**
-    *   *(You can specify libraries like TensorFlow, Keras, or OpenCV here)*
+    *   [PyTorch](https://pytorch.org/)
+    *   [TensorFlow](https://www.tensorflow.org/)
 
 ---
 
